@@ -1,0 +1,8 @@
+# Base de datos de clientes activos
+# Formato: ID_CLIENTE|NOMBRE
+CLI001|Juan Perez
+CLI002|Maria Garcia
+ABC123|Carlos Lopez
+VIPG01|Ana Torres
+ZAP999|Luis Mendoza
+VIPGUEST01|Roberto Silva

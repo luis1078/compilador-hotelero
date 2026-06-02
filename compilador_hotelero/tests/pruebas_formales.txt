@@ -1,0 +1,44 @@
+# ============================================================
+#  PRUEBAS FORMALES — OE1 al OE5
+#  Compilador de Reservas Hoteleras
+# ============================================================
+
+# ── OE1: Tokens del dominio (16 tokens definidos) ────────────
+# PF-01: Todos los tipos de habitación reconocidos
+RESERVAR HABITACION SIMPLE PARA CLIENTE CLI001 DESDE 25/06/2026 HASTA 30/06/2026
+RESERVAR HABITACION DOBLE PARA CLIENTE CLI001 DESDE 25/06/2026 HASTA 30/06/2026
+RESERVAR HABITACION SUITE PARA CLIENTE CLI001 DESDE 25/06/2026 HASTA 30/06/2026
+RESERVAR HABITACION PRESIDENCIAL PARA CLIENTE VIPG01 DESDE 25/06/2026 HASTA 30/06/2026
+
+# ── OE2: Gramática (11 reglas de producción) ─────────────────
+# PF-05: Las 3 formas de sentencia válidas
+CANCELAR RESERVA RES0001
+CONSULTAR DISPONIBILIDAD DOBLE DESDE 20/07/2026 HASTA 25/07/2026
+
+# ── OE3: Validación semántica (5 reglas) ─────────────────────
+# PF-07: RS01 — Fechas incoherentes
+RESERVAR HABITACION SIMPLE PARA CLIENTE CLI002 DESDE 20/07/2026 HASTA 10/07/2026
+# PF-08: RS02 — Fechas en el pasado
+RESERVAR HABITACION DOBLE PARA CLIENTE CLI001 DESDE 01/03/2024 HASTA 05/03/2024
+# PF-09: RS03 — Habitación no disponible
+CONSULTAR DISPONIBILIDAD SUITE DESDE 03/07/2026 HASTA 08/07/2026
+# PF-10: RS04 — Cliente inexistente
+RESERVAR HABITACION DOBLE PARA CLIENTE FAKE01 DESDE 25/06/2026 HASTA 30/06/2026
+# PF-11: RS05 — Reserva ya cancelada
+CANCELAR RESERVA RES0010
+
+# ── OE4: Analizador léxico — detección de errores ────────────
+# PF-12: Token en minúsculas
+reservar HABITACION DOBLE PARA CLIENTE CLI001 DESDE 25/06/2026 HASTA 30/06/2026
+# PF-13: Fecha con formato incorrecto
+RESERVAR HABITACION DOBLE PARA CLIENTE CLI001 DESDE 2026/06/25 HASTA 30/06/2026
+# PF-14: Carácter no reconocido
+RESERVAR HABITACION DOBLE @ CLIENTE CLI001 DESDE 25/06/2026 HASTA 30/06/2026
+
+# ── OE5: Integración — casos mixtos ──────────────────────────
+# PF-15: Error léxico bloquea sintáctico y semántico
+RESERVAR habitacion DOBLE PARA CLIENTE CLI001 DESDE 25/06/2026 HASTA 30/06/2026
+# PF-16: Error sintáctico bloquea semántico
+RESERVAR DOBLE PARA CLIENTE CLI001 DESDE 25/06/2026 HASTA 30/06/2026
+# PF-17: Cancelación de reserva inexistente
+CANCELAR RESERVA RES9999

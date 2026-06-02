@@ -1,0 +1,31 @@
+# ============================================================
+#  CASOS DE PRUEBA — Analizador Léxico
+#  Las líneas que empiezan con # son comentarios
+# ============================================================
+
+# CASO VÁLIDO 1: Reserva estándar
+RESERVAR HABITACION DOBLE PARA CLIENTE CLI001 DESDE 15/06/2026 HASTA 20/06/2026
+
+# CASO VÁLIDO 2: Reserva tipo suite
+RESERVAR HABITACION SUITE PARA CLIENTE ABC123 DESDE 01/07/2026 HASTA 05/07/2026
+
+# CASO VÁLIDO 3: Cancelación de reserva
+CANCELAR RESERVA RES0042
+
+# CASO VÁLIDO 4: Consulta de disponibilidad
+CONSULTAR DISPONIBILIDAD SUITE DESDE 01/07/2026 HASTA 05/07/2026
+
+# CASO VÁLIDO 5: Reserva presidencial con ID largo
+RESERVAR HABITACION PRESIDENCIAL PARA CLIENTE VIPGUEST01 DESDE 10/08/2026 HASTA 15/08/2026
+
+# CASO CON ERROR 1: Fecha con formato incorrecto
+RESERVAR HABITACION SIMPLE PARA CLIENTE CLI002 DESDE 2026/06/15 HASTA 20/06/2026
+
+# CASO CON ERROR 2: Palabra clave en minúsculas
+reservar HABITACION DOBLE PARA CLIENTE CLI003 DESDE 15/06/2026 HASTA 20/06/2026
+
+# CASO CON ERROR 3: ID de reserva inválido
+CANCELAR RESERVA RESABCD
+
+# CASO CON ERROR 4: Carácter no reconocido
+RESERVAR HABITACION DOBLE @ CLIENTE CLI004 DESDE 15/06/2026 HASTA 20/06/2026
