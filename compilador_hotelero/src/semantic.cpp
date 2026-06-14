@@ -81,7 +81,11 @@ Fecha Semantic::parseFecha(const std::string& s) const {
 Fecha Semantic::fechaHoy() const {
     std::time_t t = std::time(nullptr);
     std::tm tm{};
-    localtime_s(&tm, &t);
+#ifdef _WIN32
+    localtime_s(&tm, &t);          // MSVC (build nativo Windows)
+#else
+    localtime_r(&t, &tm);          // POSIX / Emscripten (build WASM)
+#endif
     return Fecha{ tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900 };
 }
 
