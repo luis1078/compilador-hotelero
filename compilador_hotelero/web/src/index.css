@@ -14,6 +14,12 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden; /* sin scroll horizontal global */
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -23,7 +29,7 @@ body {
 }
 
 .app {
-  max-width: 880px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 2rem 1.25rem 4rem;
 }
@@ -314,11 +320,22 @@ body {
 .sentencia-card {
   background: var(--panel);
   border: 1px solid var(--border);
+  border-left-width: 4px;
   border-radius: 12px;
-  padding: 1.25rem;
+  padding: 1.1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.7rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sentencia-card--ok {
+  border-left-color: var(--ok);
+}
+
+.sentencia-card--error {
+  border-left-color: var(--error);
 }
 
 .sentencia-card__head {
@@ -364,12 +381,19 @@ body {
 
 .automatas-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0,1fr) evita que el contenido ancho (diagramas) infle el ancho */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   margin: 0.5rem 0;
 }
 
-@media (max-width: 640px) {
+/* Cada columna debe poder encogerse: sin esto, un SVG ancho desborda */
+.automatas-grid > div {
+  min-width: 0;
+}
+
+/* En pantallas pequeñas/medianas las columnas AFND/AFD se apilan */
+@media (max-width: 860px) {
   .automatas-grid {
     grid-template-columns: 1fr;
   }
@@ -380,6 +404,8 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .tabla--chica {
@@ -421,4 +447,386 @@ body {
   color: var(--muted);
   font-family: ui-monospace, monospace;
   font-size: 0.8rem;
+}
+
+/* ── Diagrama de autómata (Graphviz / Viz.js) ──────────────── */
+
+.automata-diagrama {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  margin: 0.5rem 0 0.75rem;
+  max-width: 100%;
+  overflow-x: auto; /* scroll horizontal si el diagrama es ancho */
+}
+
+.automata-diagrama__svg {
+  min-height: 60px;
+}
+
+/* El SVG generado por Graphviz: que no se encoja, permitir scroll */
+.automata-diagrama__svg svg {
+  display: block;
+  height: auto;
+}
+
+/* ── Diagrama de AST (Graphviz / Viz.js) ───────────────────── */
+
+.ast-diagrama {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  margin: 0.5rem 0 0.25rem;
+  max-width: 100%;
+  overflow-x: auto; /* scroll solo dentro del contenedor si el árbol es ancho */
+}
+
+.ast-diagrama--vacio {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ── Error sintáctico: resumen, nodo textual y fila de fallo ── */
+
+.error-sintactico {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--error);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  margin: 0.25rem 0 0.6rem;
+}
+
+.error-sintactico__titulo {
+  margin: 0 0 0.35rem;
+  color: #fca5a5;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.error-sintactico__lista {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.error-sintactico__lista li {
+  margin: 0.12rem 0;
+}
+
+.error-sintactico__k {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Marca contextual del error en el árbol textual (no agrega nodos) */
+.ast-marca-error {
+  color: #fca5a5;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.ast-noterminal-error {
+  color: #fca5a5 !important;
+  font-weight: 700;
+}
+
+.ast-terminal-error {
+  color: #fca5a5 !important;
+  font-weight: 700;
+}
+
+/* Fila del token donde falló el parser */
+.fila-fallo > td {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.badge-fallo {
+  display: inline-block;
+  margin-left: 0.45rem;
+  background: var(--error);
+  color: #450a0a;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ── Resumen de la Fase 2 ──────────────────────────────────── */
+
+.resumen-sintactico {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.25rem 0 0.6rem;
+  font-size: 0.85rem;
+}
+
+.resumen-sintactico p {
+  margin: 0.2rem 0;
+}
+
+.resumen-sintactico__k {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.automata-diagrama__estado {
+  color: var(--muted);
+  font-size: 0.82rem;
+  padding: 0.75rem 0.25rem;
+  text-align: center;
+}
+
+.automata-diagrama__estado--error {
+  color: #fca5a5;
+}
+
+/* ── Recorrido AFD por token (Fase 1 · Léxico) ─────────────── */
+
+.btn-recorrido {
+  background: var(--panel-2);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-recorrido:hover {
+  border-color: var(--accent);
+}
+
+.fila-recorrido > td {
+  background: rgba(15, 23, 42, 0.4);
+  padding: 0;
+}
+
+.token-path {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem 1rem;
+  border-left: 3px solid var(--accent);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.token-path--vacio {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.token-path__info {
+  display: grid;
+  /* columnas flexibles: se reacomodan y apilan si no hay espacio */
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  /* separación amplia entre columnas para que los valores no se toquen */
+  column-gap: 2.25rem;
+  row-gap: 0.55rem;
+  margin: 0;
+  max-width: 100%;
+}
+
+.token-path__item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* permite que el texto se ajuste en vez de desbordar */
+}
+
+/* Camino AFD y Resultado ocupan toda la fila, en su propia línea */
+.token-path__item--full {
+  grid-column: 1 / -1;
+}
+
+.token-path__info dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.15rem;
+}
+
+.token-path__info dd {
+  margin: 0;
+  font-size: 0.88rem;
+  min-width: 0;
+  /* valores largos sin espacios (p.ej. nombres de categoría) deben ajustar */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.token-path__camino {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  /* salto de línea correcto para caminos largos */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ── Secciones/ítems colapsables ───────────────────────────── */
+
+.colapsable {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.colapsable--item {
+  background: var(--panel-2);
+  border-radius: 8px;
+}
+
+/* Anidados: un poco de aire entre ítems */
+.colapsable .colapsable {
+  margin-top: 0.6rem;
+}
+
+.colapsable__cab {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.colapsable--item > .colapsable__cab {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.6rem 0.85rem;
+}
+
+.colapsable__cab:hover {
+  color: var(--accent);
+}
+
+.colapsable__chevron {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+  font-size: 0.8rem;
+  flex: none;
+}
+
+.colapsable.is-open > .colapsable__cab .colapsable__chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+
+.colapsable__titulo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.colapsable__extra {
+  flex: none;
+}
+
+.colapsable__hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.colapsable__cuerpo {
+  padding: 0 1rem 1rem;
+  max-width: 100%;
+}
+
+.colapsable--item > .colapsable__cuerpo {
+  padding: 0 0.85rem 0.85rem;
+}
+
+/* ── Chips de resumen de fases (card compacto) ─────────────── */
+
+.chips-fases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.chip-fase {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.74rem;
+  background: var(--bg);
+}
+
+.chip-fase__nombre {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.chip-fase__estado {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.chip-fase__detalle {
+  color: var(--muted);
+}
+
+.chip-fase--ok .chip-fase__estado {
+  color: var(--ok);
+}
+.chip-fase--error {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+.chip-fase--error .chip-fase__estado {
+  color: var(--error);
+}
+.chip-fase--no-evaluado .chip-fase__estado {
+  color: var(--muted);
+}
+
+.sentencia-card__motivo {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 0.82rem;
+}
+
+/* ── Sección de sentencias ─────────────────────────────────── */
+
+.sentencias {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sentencias__titulo {
+  margin: 0.5rem 0 0;
+  font-size: 1.15rem;
+}
+
+/* ── Contenedor con scroll para tablas anchas ──────────────── */
+
+.tabla-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.celda-camino {
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  white-space: nowrap;
 }

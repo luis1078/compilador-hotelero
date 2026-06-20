@@ -10,6 +10,8 @@
 //    4. Apendice con el JSON completo, para depuracion o evidencia
 // ============================================================
 
+import { automataToPng } from "./automataSvg.js";
+
 const COLOR_OK = [34, 197, 94];
 const COLOR_ERROR = [239, 68, 68];
 const COLOR_MUTED = [100, 116, 139];
@@ -99,6 +101,21 @@ class Lienzo {
   espaciador(alto = 8) {
     this.y += alto;
   }
+
+  // Agrega una imagen PNG (data URL) escalada para no exceder el ancho de
+  // contenido, con paginación automática. Usada para los diagramas de autómatas.
+  imagen(dataUrl, anchoPx, altoPx) {
+    let w = anchoPx;
+    let h = altoPx;
+    if (w > this.anchoContenido) {
+      const k = this.anchoContenido / w;
+      w = this.anchoContenido;
+      h = h * k;
+    }
+    this.espacio(h + 6);
+    this.doc.addImage(dataUrl, "PNG", MARGEN, this.y, w, h);
+    this.y += h + 6;
+  }
 }
 
 // ── Seccion 1: resumen + tabla compacta por sentencia ────────
@@ -154,7 +171,51 @@ function listarTransiciones(c, automata) {
   });
 }
 
-function dibujarAutomatas(c, automatas) {
+// Renderiza el diagrama (PNG) de un autómata y lo agrega al PDF.
+// Best-effort: si Viz.js/canvas falla, se omite el diagrama pero el PDF
+// se sigue generando con las tablas/transiciones de texto.
+async function agregarDiagrama(c, automata, nombre) {
+  const png = await automataToPng(automata, nombre);
+  if (png) c.imagen(png.dataUrl, png.width, png.height);
+}
+
+// ── Cómo exportar un AST GRÁFICO al PDF (no implementado a propósito:
+//    meter todos los AST haría el PDF enorme). Para incluir el árbol de una
+//    sentencia (o un subárbol por regla) bastaría reutilizar la misma tubería
+//    DOT → SVG → PNG que los autómatas:
+//
+//    import { generateAstDot, TEMA_AST_CLARO } from "./astDot.js";
+//    import { svgStringToPng, /* + un getViz compartido */ } from "./automataSvg.js";
+//
+//    const dot = generateAstDot(r.sintactico.ast, { tema: TEMA_AST_CLARO });
+//    const svg = (await getViz()).renderString(dot, { format: "svg" });
+//    const png = await svgStringToPng(svg);
+//    if (png) c.imagen(png.dataUrl, png.width, png.height);
+//
+//    (Se usa TEMA_AST_CLARO para fondo blanco; el resto es idéntico a
+//    agregarDiagrama() de los autómatas. No requiere tocar el parser.)
+
+// ── Cómo exportar el RECORRIDO de un token al PDF (no implementado a
+//    propósito: meter todos los recorridos de todos los tokens haría el PDF
+//    enorme). Para incluir solo el/los recorrido(s) seleccionado(s) bastaría:
+//
+//    import { parseAfdPath, buildHighlightedTransitions } from "./automataDot.js";
+//
+//    const estados = parseAfdPath(token.camino);
+//    const cat     = resultado.automatasLexicos.find(c => c.categoria === token.categoria);
+//    const aceptado = (cat.afd.finales || []).includes(estados.at(-1));
+//    const png = await automataToPng(cat.afd, "AFD_recorrido", 2, {
+//      highlightedPathStates: estados,
+//      highlightedPathTransitions: buildHighlightedTransitions(estados),
+//      accepted: aceptado,
+//    });
+//    if (png) c.imagen(png.dataUrl, png.width, png.height);
+//
+//    (automataToPng/automataToSvgString ya reenvían estas opciones a
+//    automataToDot, así que el PDF reutilizaría exactamente el mismo
+//    resaltado que la interfaz, sin tocar el lexer ni la lógica.)
+
+async function dibujarAutomatas(c, automatas) {
   c.saltarPagina();
   c.titulo("Autómatas léxicos por categoría", 15);
   c.parrafo(
@@ -165,7 +226,7 @@ function dibujarAutomatas(c, automatas) {
   );
   c.espaciador(6);
 
-  automatas.forEach((cat) => {
+  for (const cat of automatas) {
     c.espacio(50);
     c.subtitulo(cat.categoria, 12);
     c.parrafo(cat.descripcion, { tam: 9, color: COLOR_MUTED });
@@ -175,6 +236,7 @@ function dibujarAutomatas(c, automatas) {
         `inicial: ${cat.afnd.inicial} | finales: ${cat.afnd.finales.join(", ")}`,
       { tam: 9 }
     );
+    await agregarDiagrama(c, cat.afnd, "AFND"); // diagrama gráfico
     listarTransiciones(c, cat.afnd);
 
     c.espaciador(4);
@@ -183,6 +245,7 @@ function dibujarAutomatas(c, automatas) {
         `inicial: ${cat.afd.inicial} | finales: ${cat.afd.finales.join(", ")}`,
       { tam: 9 }
     );
+    await agregarDiagrama(c, cat.afd, "AFD"); // diagrama gráfico
     listarTransiciones(c, cat.afd);
 
     c.espaciador(4);
@@ -196,7 +259,7 @@ function dibujarAutomatas(c, automatas) {
     });
 
     c.espaciador(10);
-  });
+  }
 }
 
 // ── Seccion 3: una pagina por sentencia ──────────────────────
@@ -282,7 +345,7 @@ export async function exportarResultadoPdf(resultado, nombreArchivo) {
   const c = new Lienzo(doc);
 
   dibujarResumen(c, resultado);
-  dibujarAutomatas(c, resultado.automatasLexicos);
+  await dibujarAutomatas(c, resultado.automatasLexicos);
   resultado.resultados.forEach((r) => dibujarSentencia(c, r));
   dibujarApendiceJson(c, resultado);
 
