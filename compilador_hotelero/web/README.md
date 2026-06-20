@@ -42,13 +42,18 @@ Abre la URL que muestra Vite (por defecto <http://localhost:5173>).
 ## Actualizar el WASM tras recompilar el C++
 
 Si cambias `lexer.cpp`, `parser.cpp`, `semantic.cpp` o `compiler_api.cpp`,
-recompila el WASM (ver `../README_WASM.md`) y vuelve a copiar los artefactos:
+recompila el WASM desde la raíz del repo (ver `../README_WASM.md`):
 
 ```bash
-# desde la carpeta web/
-cp ../dist/compiler.js  public/wasm/compiler.js
-cp ../dist/compiler.wasm public/wasm/compiler.wasm
+# Windows
+.\build_wasm.ps1
+# Linux / macOS / Git Bash
+./build_wasm.sh
 ```
+
+Ambos scripts copian automáticamente `compiler.js` y `compiler.wasm` a
+`public/wasm/` al finalizar un build exitoso — ya no hace falta copiarlos a
+mano.
 
 ## Build de producción
 

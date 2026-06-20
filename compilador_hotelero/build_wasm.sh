@@ -34,3 +34,14 @@ emcc \
   -o "$OUT_DIR/compiler.js"
 
 echo "OK -> $OUT_DIR/compiler.js  +  $OUT_DIR/compiler.wasm"
+
+# Copia los artefactos al frontend, que es desde donde Vite los sirve
+# (web/public/wasm/). Asi no hace falta copiarlos a mano tras cada build.
+WEB_WASM_DIR="web/public/wasm"
+mkdir -p "$WEB_WASM_DIR"
+if cp "$OUT_DIR/compiler.js" "$OUT_DIR/compiler.wasm" "$WEB_WASM_DIR/"; then
+    echo "OK -> copiado a $WEB_WASM_DIR/compiler.js + compiler.wasm"
+else
+    echo "Fallo al copiar a $WEB_WASM_DIR" >&2
+    exit 1
+fi

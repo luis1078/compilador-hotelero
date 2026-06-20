@@ -269,3 +269,156 @@ body {
   font-size: 0.78rem;
   text-align: center;
 }
+
+/* ── Input de archivo ──────────────────────────────────────── */
+
+.file-input {
+  display: block;
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* ── Resumen global ────────────────────────────────────────── */
+
+.resumen-global {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  font-weight: 600;
+}
+
+.resumen-global__ok {
+  color: var(--ok);
+}
+
+.resumen-global__error {
+  color: var(--error);
+}
+
+.resumen-global .btn--ghost {
+  margin-left: auto;
+}
+
+/* ── Tarjeta por sentencia ─────────────────────────────────── */
+
+.sentencia-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sentencia-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.sentencia-card__numero {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sentencia-card__entrada {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: var(--accent);
+  word-break: break-word;
+}
+
+/* ── Autómatas léxicos ─────────────────────────────────────── */
+
+.categoria-automata {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.categoria-automata:first-of-type {
+  border-top: none;
+  margin-top: 0.5rem;
+  padding-top: 0;
+}
+
+.categoria-automata h4 {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+
+.automatas-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+@media (max-width: 640px) {
+  .automatas-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.automata-bloque {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+}
+
+.tabla--chica {
+  font-size: 0.78rem;
+}
+
+.tabla--chica th,
+.tabla--chica td {
+  padding: 0.25rem 0.5rem;
+}
+
+/* ── Árbol de sintaxis abstracta ───────────────────────────── */
+
+.ast-tree,
+.ast-tree ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 1.1rem;
+  border-left: 1px dashed var(--border);
+}
+
+.ast-tree {
+  padding-left: 0;
+  border-left: none;
+  margin-top: 0.5rem;
+}
+
+.ast-tree li {
+  margin: 0.2rem 0;
+}
+
+.ast-noterminal {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.ast-terminal {
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}

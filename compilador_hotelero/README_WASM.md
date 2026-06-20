@@ -13,6 +13,7 @@ JavaScript/React mediante WebAssembly, **sin reescribir la lógica**:
 | `build_wasm.sh`    | Script de compilación para Linux / macOS / Git Bash / WSL.          |
 | `dist/compiler.js` | Salida generada: módulo glue de Emscripten.                         |
 | `dist/compiler.wasm` | Salida generada: binario WebAssembly.                             |
+| `web/public/wasm/` | Copia de `dist/compiler.js` + `dist/compiler.wasm` que sirve Vite. Ambos scripts la actualizan automáticamente al final de cada build exitoso. |
 
 > Nota: `main.cpp` (modo consola/interactivo) **no** se incluye en el build WASM.
 > Los datos `data/clientes.txt` y `data/reservas.txt` se **incrustan** en el binario
@@ -45,7 +46,12 @@ source ./emsdk_env.sh
 ./build_wasm.sh
 ```
 
-Ambos ejecutan el mismo comando `emcc` y producen `dist/compiler.js` + `dist/compiler.wasm`.
+Ambos ejecutan el mismo comando `emcc`, producen `dist/compiler.js` +
+`dist/compiler.wasm`, y al finalizar copian esos dos archivos a
+`web/public/wasm/` (sobrescribiendo lo que haya), que es desde donde Vite
+los sirve. **Ya no hace falta copiarlos a mano** — si `emcc` falla, el
+script se detiene antes de copiar nada, así que `web/public/wasm/` nunca
+queda en un estado parcial.
 
 ### Comando `emcc` equivalente (referencia)
 

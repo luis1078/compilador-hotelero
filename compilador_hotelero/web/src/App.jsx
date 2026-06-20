@@ -1,11 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getCompiler } from "./wasmCompiler.js";
+import { exportarResultadoPdf } from "./pdfExport.js";
 
 const EJEMPLOS = [
-  "RESERVAR HABITACION DOBLE PARA CLIENTE CLI001 DESDE 15/06/2026 HASTA 20/06/2026",
-  "RESERVAR HABITACION SUITE PARA CLIENTE ABC123 DESDE 10/07/2026 HASTA 14/07/2026",
-  "CANCELAR RESERVA RES0042",
-  "CONSULTAR DISPONIBILIDAD SUITE DESDE 01/09/2026 HASTA 05/09/2026",
+  {
+    nombre: "Reservas, cancelación y consulta",
+    contenido: `# Ejemplo: reserva, cancelacion y consulta de disponibilidad
+RESERVAR HABITACION DOBLE PARA CLIENTE CLI001 DESDE 15/06/2026 HASTA 20/06/2026
+CANCELAR RESERVA RES0042
+CONSULTAR DISPONIBILIDAD SUITE DESDE 01/09/2026 HASTA 05/09/2026`,
+  },
+  {
+    nombre: "Con errores léxicos",
+    contenido: `# Ejemplo: fecha mal formada y palabra clave en minuscula
+RESERVAR HABITACION DOBLE PARA CLIENTE CLI001 DESDE 2026/06/15 HASTA 20/06/2026
+reservar HABITACION SIMPLE PARA CLIENTE ABC123 DESDE 01/07/2026 HASTA 05/07/2026`,
+  },
 ];
 
 function Fase({ titulo, ok, evaluado = true, children }) {
@@ -22,13 +32,215 @@ function Fase({ titulo, ok, evaluado = true, children }) {
   );
 }
 
+// Nodo recursivo del AST sintactico (uno por regla P1-P9, u hoja terminal)
+function NodoArbol({ nodo }) {
+  const esTerminal = !nodo.regla;
+  return (
+    <li>
+      <span className={esTerminal ? "ast-terminal" : "ast-noterminal"}>
+        {esTerminal
+          ? `${nodo.simbolo} ("${nodo.lexema}")`
+          : `${nodo.regla} · ${nodo.simbolo}`}
+      </span>
+      {nodo.hijos && nodo.hijos.length > 0 && (
+        <ul>
+          {nodo.hijos.map((hijo, i) => (
+            <NodoArbol key={i} nodo={hijo} />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+// Tabla generica de transiciones de un automata (AFND o AFD)
+function AutomataTabla({ automata }) {
+  return (
+    <div className="automata-bloque">
+      <p className="meta">
+        Estados: {automata.estados.join(", ")} · Alfabeto:{" "}
+        {automata.alfabeto.join(", ")} · Inicial: {automata.inicial} ·
+        Finales: {automata.finales.join(", ")}
+      </p>
+      <table className="tabla tabla--chica">
+        <thead>
+          <tr>
+            <th>Desde</th>
+            <th>Símbolo</th>
+            <th>Hasta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {automata.transiciones.map((t, i) => (
+            <tr key={i}>
+              <td>{t.desde}</td>
+              <td>{t.simbolo}</td>
+              <td>{t.hasta}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// AFND + AFD + tabla de transicion de una categoria lexica completa
+function CategoriaAutomata({ cat }) {
+  return (
+    <div className="categoria-automata">
+      <h4>{cat.categoria}</h4>
+      <p className="meta">{cat.descripcion}</p>
+      <div className="automatas-grid">
+        <div>
+          <p className="label">AFND</p>
+          <AutomataTabla automata={cat.afnd} />
+        </div>
+        <div>
+          <p className="label">AFD</p>
+          <AutomataTabla automata={cat.afd} />
+        </div>
+      </div>
+      <p className="label">Tabla de transición (AFD)</p>
+      <table className="tabla tabla--chica">
+        <thead>
+          <tr>
+            <th>Estado</th>
+            {cat.afd.alfabeto.map((s) => (
+              <th key={s}>{s}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {cat.tablaTransicion.map((fila, i) => (
+            <tr key={i}>
+              <td>{fila.estado}</td>
+              {cat.afd.alfabeto.map((s) => (
+                <td key={s}>{fila[s]}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Resultado completo (lexico + sintactico + semantico) de una sentencia
+function SentenciaResultado({ r }) {
+  return (
+    <div className="sentencia-card">
+      <header className="sentencia-card__head">
+        <span className="sentencia-card__numero">
+          #{r.numero} · línea {r.lineaArchivo}
+        </span>
+        <code className="sentencia-card__entrada">{r.entrada}</code>
+      </header>
+
+      <div
+        className={`veredicto veredicto--${
+          r.resultadoFinal.valido ? "ok" : "error"
+        }`}
+      >
+        {r.resultadoFinal.valido ? "✓ " : "✗ "}
+        {r.resultadoFinal.mensaje}
+      </div>
+
+      {/* FASE 1: LÉXICO */}
+      <Fase titulo="Fase 1 · Léxico" ok={r.lexico.ok}>
+        <p className="meta">
+          {r.lexico.tokens.length} token(s) · {r.lexico.errores} error(es)
+        </p>
+        <table className="tabla">
+          <thead>
+            <tr>
+              <th>Col</th>
+              <th>Tipo</th>
+              <th>Lexema</th>
+              <th>Categoría</th>
+              <th>Camino AFD</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.lexico.tokens.map((t, i) => (
+              <tr key={i} className={t.tipo === "ERROR" ? "fila-error" : ""}>
+                <td>{t.col}</td>
+                <td>{t.tipo}</td>
+                <td>{t.lexema}</td>
+                <td>{t.categoria || "—"}</td>
+                <td>
+                  {t.camino && t.camino.length ? t.camino.join(" → ") : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Fase>
+
+      {/* FASE 2: SINTÁCTICO */}
+      <Fase
+        titulo="Fase 2 · Sintáctico"
+        ok={r.sintactico.ok}
+        evaluado={r.sintactico.evaluado}
+      >
+        {r.sintactico.evaluado ? (
+          <>
+            <p className="meta">
+              {r.sintactico.errores} error(es) de estructura
+            </p>
+            {r.sintactico.ast && (
+              <ul className="ast-tree">
+                <NodoArbol nodo={r.sintactico.ast} />
+              </ul>
+            )}
+          </>
+        ) : (
+          <p className="meta">Omitido por errores léxicos previos</p>
+        )}
+      </Fase>
+
+      {/* FASE 3: SEMÁNTICO */}
+      <Fase
+        titulo="Fase 3 · Semántico"
+        ok={r.semantico.ok}
+        evaluado={r.semantico.evaluado}
+      >
+        {r.semantico.evaluado ? (
+          <table className="tabla">
+            <thead>
+              <tr>
+                <th>Regla</th>
+                <th>Estado</th>
+                <th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.semantico.reglas.map((reg, i) => (
+                <tr key={i} className={reg.ok ? "" : "fila-error"}>
+                  <td>{reg.codigo}</td>
+                  <td>{reg.ok ? "OK" : "ERROR"}</td>
+                  <td>{reg.mensaje}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="meta">Omitido por errores en fases previas</p>
+        )}
+      </Fase>
+    </div>
+  );
+}
+
 export default function App() {
-  const [input, setInput] = useState(EJEMPLOS[0]);
+  const [nombreArchivo, setNombreArchivo] = useState("");
+  const [contenido, setContenido] = useState("");
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState("");
   const [cargandoWasm, setCargandoWasm] = useState(true);
   const [analizando, setAnalizando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [mostrarJson, setMostrarJson] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Pre-carga el modulo WASM al montar para que el primer analisis sea instantaneo.
   useEffect(() => {
@@ -46,18 +258,45 @@ export default function App() {
     };
   }, []);
 
+  async function manejarArchivo(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError("");
+    setResultado(null);
+    setNombreArchivo(file.name);
+    setContenido(await file.text());
+  }
+
+  function cargarEjemplo(ejemplo) {
+    setError("");
+    setResultado(null);
+    setNombreArchivo(`${ejemplo.nombre} (ejemplo)`);
+    setContenido(ejemplo.contenido);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   async function analizar() {
     setError("");
     setResultado(null);
     setAnalizando(true);
     try {
       const Module = await getCompiler();
-      const json = Module.analizarSentencia(input);
+      const json = Module.analizarTexto(contenido);
       setResultado(JSON.parse(json));
     } catch (e) {
       setError(`Error al analizar: ${e.message}`);
     } finally {
       setAnalizando(false);
+    }
+  }
+
+  async function exportarPdf() {
+    if (!resultado) return;
+    setExportando(true);
+    try {
+      await exportarResultadoPdf(resultado, nombreArchivo);
+    } finally {
+      setExportando(false);
     }
   }
 
@@ -68,24 +307,30 @@ export default function App() {
       <header className="app__header">
         <h1>🏨 Compilador Hotelero</h1>
         <p className="subtitulo">
-          Análisis léxico, sintáctico y semántico — lógica en{" "}
-          <strong>C++ compilado a WebAssembly</strong>.
+          Análisis léxico, sintáctico y semántico de un archivo de reservas —
+          lógica en <strong>C++ compilado a WebAssembly</strong>.
         </p>
       </header>
 
       <div className="panel">
-        <label htmlFor="entrada" className="label">
-          Sentencia a analizar
+        <label htmlFor="archivo" className="label">
+          Archivo .txt con sentencias (una por línea)
         </label>
-        <textarea
-          id="entrada"
-          className="textarea"
-          rows={3}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Escribe una sentencia de reserva hotelera…"
-          spellCheck={false}
+        <input
+          id="archivo"
+          ref={fileInputRef}
+          type="file"
+          accept=".txt"
+          className="file-input"
+          onChange={manejarArchivo}
         />
+
+        {nombreArchivo && (
+          <p className="meta">
+            Cargado: <strong>{nombreArchivo}</strong> ·{" "}
+            {contenido.split("\n").length} línea(s)
+          </p>
+        )}
 
         <div className="ejemplos">
           <span className="ejemplos__titulo">Ejemplos:</span>
@@ -94,10 +339,9 @@ export default function App() {
               key={i}
               type="button"
               className="chip"
-              onClick={() => setInput(ej)}
-              title={ej}
+              onClick={() => cargarEjemplo(ej)}
             >
-              {ej.split(" ").slice(0, 2).join(" ")}…
+              {ej.nombre}
             </button>
           ))}
         </div>
@@ -106,13 +350,13 @@ export default function App() {
           type="button"
           className="btn"
           onClick={analizar}
-          disabled={disabled || !input.trim()}
+          disabled={disabled || !contenido.trim()}
         >
           {cargandoWasm
             ? "Cargando WASM…"
             : analizando
             ? "Analizando…"
-            : "Analizar"}
+            : "Analizar archivo"}
         </button>
       </div>
 
@@ -120,83 +364,34 @@ export default function App() {
 
       {resultado && (
         <div className="resultado">
-          <div
-            className={`veredicto veredicto--${
-              resultado.resultadoFinal.valido ? "ok" : "error"
-            }`}
-          >
-            {resultado.resultadoFinal.valido ? "✓ " : "✗ "}
-            {resultado.resultadoFinal.mensaje}
+          <div className="resumen-global">
+            <span>{resultado.totalSentencias} sentencia(s)</span>
+            <span className="resumen-global__ok">
+              {resultado.resumen.totalValidas} válida(s)
+            </span>
+            <span className="resumen-global__error">
+              {resultado.resumen.totalInvalidas} inválida(s)
+            </span>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={exportarPdf}
+              disabled={exportando}
+            >
+              {exportando ? "Generando PDF…" : "Exportar PDF"}
+            </button>
           </div>
 
-          {/* FASE 1: LÉXICO */}
-          <Fase titulo="Fase 1 · Léxico" ok={resultado.lexico.ok}>
-            <p className="meta">
-              {resultado.lexico.tokens.length} token(s) ·{" "}
-              {resultado.lexico.errores} error(es)
-            </p>
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Col</th>
-                  <th>Tipo</th>
-                  <th>Lexema</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resultado.lexico.tokens.map((t, i) => (
-                  <tr key={i} className={t.tipo === "ERROR" ? "fila-error" : ""}>
-                    <td>{t.col}</td>
-                    <td>{t.tipo}</td>
-                    <td>{t.lexema}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Fase>
+          <section className="panel">
+            <h2>Autómatas léxicos por categoría</h2>
+            {resultado.automatasLexicos.map((cat, i) => (
+              <CategoriaAutomata key={i} cat={cat} />
+            ))}
+          </section>
 
-          {/* FASE 2: SINTÁCTICO */}
-          <Fase
-            titulo="Fase 2 · Sintáctico"
-            ok={resultado.sintactico.ok}
-            evaluado={resultado.sintactico.evaluado}
-          >
-            <p className="meta">
-              {resultado.sintactico.evaluado
-                ? `${resultado.sintactico.errores} error(es) de estructura`
-                : "Omitido por errores léxicos previos"}
-            </p>
-          </Fase>
-
-          {/* FASE 3: SEMÁNTICO */}
-          <Fase
-            titulo="Fase 3 · Semántico"
-            ok={resultado.semantico.ok}
-            evaluado={resultado.semantico.evaluado}
-          >
-            {resultado.semantico.evaluado ? (
-              <table className="tabla">
-                <thead>
-                  <tr>
-                    <th>Regla</th>
-                    <th>Estado</th>
-                    <th>Detalle</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resultado.semantico.reglas.map((r, i) => (
-                    <tr key={i} className={r.ok ? "" : "fila-error"}>
-                      <td>{r.codigo}</td>
-                      <td>{r.ok ? "OK" : "ERROR"}</td>
-                      <td>{r.mensaje}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p className="meta">Omitido por errores en fases previas</p>
-            )}
-          </Fase>
+          {resultado.resultados.map((r, i) => (
+            <SentenciaResultado key={i} r={r} />
+          ))}
 
           {/* JSON CRUDO */}
           <div className="json-toggle">
@@ -208,9 +403,7 @@ export default function App() {
               {mostrarJson ? "Ocultar JSON" : "Ver JSON crudo"}
             </button>
             {mostrarJson && (
-              <pre className="json">
-                {JSON.stringify(resultado, null, 2)}
-              </pre>
+              <pre className="json">{JSON.stringify(resultado, null, 2)}</pre>
             )}
           </div>
         </div>

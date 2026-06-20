@@ -1,5 +1,6 @@
 #pragma once
 #include "token.h"
+#include "ast.h"
 #include <vector>
 #include <string>
 
@@ -20,10 +21,36 @@ public:
     bool hasErrors() const { return errorCount > 0; }
     int  getErrorCount() const { return errorCount; }
 
+    // Árbol de sintaxis abstracta construido durante parse().
+    // Disponible una vez que parse() retorna (válida o no).
+    const NodoAST& getAST() const { return astRaiz; }
+
 private:
     std::vector<Token> tokens;  // Lista de tokens
     size_t             pos;     // Posición actual
     int                errorCount;
+
+    // ── Construcción del AST (no altera el control de flujo bool) ──
+    // Cada parseXxx() abre un nivel al entrar y lo cierra al salir,
+    // sin importar el camino de retorno (ver struct NodoScope).
+    std::vector<std::vector<NodoAST>> pilaHijos;
+    NodoAST astRaiz;
+
+    void agregarTerminal(const Token& tok);                 // hoja del AST
+    void cerrarNodo(const std::string& regla, const std::string& simbolo);
+
+    // RAII: abre un nivel al construirse, lo cierra al destruirse,
+    // garantizando que cada parseXxx() balancee la pila aunque
+    // retorne desde varios puntos distintos.
+    struct NodoScope {
+        Parser&     p;
+        std::string regla, simbolo;
+        NodoScope(Parser& p_, std::string r, std::string s)
+            : p(p_), regla(std::move(r)), simbolo(std::move(s)) {
+            p.pilaHijos.emplace_back();
+        }
+        ~NodoScope() { p.cerrarNodo(regla, simbolo); }
+    };
 
     // ── Helpers de navegación ────────────────────────────────
     const Token& current() const;       // Token en pos

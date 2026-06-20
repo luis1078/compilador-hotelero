@@ -34,9 +34,24 @@ emcc `
   -s ALLOW_MEMORY_GROWTH=1 `
   -o "$OutDir/compiler.js"
 
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "OK -> $OutDir/compiler.js  +  $OutDir/compiler.wasm" -ForegroundColor Green
-} else {
+if ($LASTEXITCODE -ne 0) {
     Write-Host "Fallo la compilacion (codigo $LASTEXITCODE)" -ForegroundColor Red
     exit $LASTEXITCODE
+}
+
+Write-Host "OK -> $OutDir/compiler.js  +  $OutDir/compiler.wasm" -ForegroundColor Green
+
+# Copia los artefactos al frontend, que es desde donde Vite los sirve
+# (web/public/wasm/). Asi no hace falta copiarlos a mano tras cada build.
+$WebWasmDir = "web/public/wasm"
+try {
+    if (-not (Test-Path $WebWasmDir)) {
+        New-Item -ItemType Directory -Path $WebWasmDir -Force | Out-Null
+    }
+    Copy-Item "$OutDir/compiler.js"   "$WebWasmDir/compiler.js"   -Force
+    Copy-Item "$OutDir/compiler.wasm" "$WebWasmDir/compiler.wasm" -Force
+    Write-Host "OK -> copiado a $WebWasmDir/compiler.js + compiler.wasm" -ForegroundColor Green
+} catch {
+    Write-Host "Fallo al copiar a $WebWasmDir : $_" -ForegroundColor Red
+    exit 1
 }

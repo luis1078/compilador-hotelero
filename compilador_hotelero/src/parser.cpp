@@ -43,11 +43,43 @@ bool Parser::isEnd() const {
 // Verifica que el token actual sea del tipo esperado y lo consume
 bool Parser::expect(TokenType expected) {
     if (current().type == expected) {
+        agregarTerminal(current());
         advance();
         return true;
     }
     syntaxError(tokenTypeName(expected), current());
     return false;
+}
+
+// ── Construcción del AST ──────────────────────────────────────
+
+// Agrega el token actual como hoja del nodo que se está construyendo
+void Parser::agregarTerminal(const Token& tok) {
+    if (pilaHijos.empty()) return;
+    NodoAST hoja;
+    hoja.regla   = "";
+    hoja.simbolo = tokenTypeName(tok.type);
+    hoja.lexema  = tok.lexeme;
+    hoja.col     = tok.column;
+    pilaHijos.back().push_back(std::move(hoja));
+}
+
+// Cierra el nivel actual de la pila y lo adjunta como hijo del nivel
+// padre (o lo guarda como raíz si era el último nivel abierto)
+void Parser::cerrarNodo(const std::string& regla, const std::string& simbolo) {
+    std::vector<NodoAST> hijos = std::move(pilaHijos.back());
+    pilaHijos.pop_back();
+
+    NodoAST nodo;
+    nodo.regla   = regla;
+    nodo.simbolo = simbolo;
+    nodo.hijos   = std::move(hijos);
+
+    if (pilaHijos.empty()) {
+        astRaiz = std::move(nodo);
+    } else {
+        pilaHijos.back().push_back(std::move(nodo));
+    }
 }
 
 // Reporte de error sintáctico con contexto claro
@@ -62,6 +94,7 @@ void Parser::syntaxError(const std::string& expected, const Token& found) {
 
 // ── P1: S → sentencia ────────────────────────────────────────
 bool Parser::parseS() {
+    NodoScope scope(*this, "P1", "S");
     bool ok = parseSentencia();
 
     // Después de la sentencia debe venir FIN ($)
@@ -70,7 +103,7 @@ bool Parser::parseS() {
         std::cerr << "  [ERROR SINTACTICO col " << current().column << "] "
                   << "Tokens inesperados al final de la sentencia: '"
                   << current().lexeme << "'\n";
-        return false;
+        ok = false;
     }
     return ok;
 }
@@ -80,6 +113,7 @@ bool Parser::parseS() {
 //                       FIRST(sent_cancel)={CANCELAR},
 //                       FIRST(sent_consulta)={CONSULTAR}
 bool Parser::parseSentencia() {
+    NodoScope scope(*this, "P2", "sentencia");
     switch (current().type) {
         case TokenType::RESERVAR:
             return parseSentReserva();
@@ -100,6 +134,7 @@ bool Parser::parseSentencia() {
 
 // ── P3: sent_reserva → RESERVAR HABITACION tipo_hab PARA CLIENTE id_cliente DESDE fecha HASTA fecha
 bool Parser::parseSentReserva() {
+    NodoScope scope(*this, "P3", "sent_reserva");
     bool ok = true;
 
     ok &= expect(TokenType::RESERVAR);      // RESERVAR
@@ -118,6 +153,7 @@ bool Parser::parseSentReserva() {
 
 // ── P4: sent_cancelacion → CANCELAR RESERVA id_reserva
 bool Parser::parseSentCancelacion() {
+    NodoScope scope(*this, "P4", "sent_cancelacion");
     bool ok = true;
 
     ok &= expect(TokenType::CANCELAR);      // CANCELAR
@@ -129,6 +165,7 @@ bool Parser::parseSentCancelacion() {
 
 // ── P5: sent_consulta → CONSULTAR DISPONIBILIDAD tipo_hab DESDE fecha HASTA fecha
 bool Parser::parseSentConsulta() {
+    NodoScope scope(*this, "P5", "sent_consulta");
     bool ok = true;
 
     ok &= expect(TokenType::CONSULTAR);     // CONSULTAR
@@ -145,11 +182,13 @@ bool Parser::parseSentConsulta() {
 // ── P6: tipo_hab → SIMPLE | DOBLE | SUITE | PRESIDENCIAL
 // FIRST = {SIMPLE, DOBLE, SUITE, PRESIDENCIAL}
 bool Parser::parseTipoHab() {
+    NodoScope scope(*this, "P6", "tipo_hab");
     TokenType t = current().type;
     if (t == TokenType::SIMPLE   ||
         t == TokenType::DOBLE    ||
         t == TokenType::SUITE    ||
         t == TokenType::PRESIDENCIAL) {
+        agregarTerminal(current());
         advance();
         return true;
     }
@@ -159,12 +198,15 @@ bool Parser::parseTipoHab() {
 
 // ── P7: id_cliente → ID_CLIENTE
 bool Parser::parseIdCliente() {
+    NodoScope scope(*this, "P7", "id_cliente");
     return expect(TokenType::ID_CLIENTE);
 }
 
 // ── P8: id_reserva → ID_RESERVA
 bool Parser::parseIdReserva() {
+    NodoScope scope(*this, "P8", "id_reserva");
     if (current().type == TokenType::ID_RESERVA) {
+        agregarTerminal(current());
         advance();
         return true;
     }
@@ -174,6 +216,7 @@ bool Parser::parseIdReserva() {
         std::cerr << "  [ERROR SINTACTICO col " << current().column << "] "
                   << "ID de reserva invalido: '" << current().lexeme
                   << "'. Debe tener formato RESnnnn (ej: RES0042)\n";
+        agregarTerminal(current());
         advance(); // recuperacion: consumir el token erroneo
         return false;
     }
@@ -183,6 +226,7 @@ bool Parser::parseIdReserva() {
 
 // ── P9: fecha → FECHA
 bool Parser::parseFecha() {
+    NodoScope scope(*this, "P9", "fecha");
     return expect(TokenType::FECHA);
 }
 
