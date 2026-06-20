@@ -66,12 +66,21 @@ Vite copia automáticamente `public/wasm/` a `dist/wasm/`.
 
 ## Desplegar en Vercel
 
-El proyecto C++ vive en la raíz del repo y la web en la subcarpeta `web/`, así
-que hay que indicarle a Vercel que el proyecto está en `web/`:
+El frontend no está en la raíz del repositorio de git, sino en una subcarpeta.
+El **Root Directory** en Vercel es relativo a la raíz del repo:
+
+```
+raíz del repo git:  compilador-hotelero/
+carpeta de la web:  compilador-hotelero/compilador_hotelero/web/
+                    └────────── Root Directory ──────────┘
+                                compilador_hotelero/web
+```
+
+Por lo tanto, el Root Directory a configurar es **`compilador_hotelero/web`**.
 
 ### Opción A — Dashboard de Vercel
 1. **Add New → Project** e importa este repositorio de GitHub.
-2. En **Root Directory** selecciona `web`.
+2. En **Root Directory** selecciona `compilador_hotelero/web`.
 3. Framework Preset: **Vite** (se autodetecta).
    - Build Command: `npm run build`
    - Output Directory: `dist`
@@ -80,9 +89,9 @@ que hay que indicarle a Vercel que el proyecto está en `web/`:
 ### Opción B — Vercel CLI
 ```bash
 npm i -g vercel
-cd web
-vercel            # primer deploy (preview); responde "web" como root si lo pide
-vercel --prod     # deploy a producción
+cd compilador_hotelero/web    # ejecuta desde la carpeta de la web
+vercel                        # primer deploy (preview)
+vercel --prod                 # deploy a producción
 ```
 
 > Vercel sirve los `.wasm` con el MIME correcto (`application/wasm`)
